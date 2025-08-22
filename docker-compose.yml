@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # Redis acts as both the Celery broker and result backend.
+  redis:
+    image: redis:6.2-alpine
+    ports:
+      - "6379:6379"
+
+  # Backend service running FastAPI.  Mounted source volume allows
+  # code changes to reload automatically in development.  Waits
+  # until Redis is ready before starting.
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - redis
+
+  # Celery worker service.  Uses the same image as the backend but
+  # launches the Celery worker process.  Mounts the same volume so
+  # that any code changes apply to the worker too.
+  worker:
+    build: ./backend
+    command: celery -A app.worker.celery_app.celery worker -l info
+    volumes:
+      - ./backend/app:/app/app
+    depends_on:
+      - redis
+      - backend
+
+  # Frontend service running the React development server.  Mounts
+  # source files and rebuilds automatically.  Exposes port 3000.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    depends_on:
+      - backend

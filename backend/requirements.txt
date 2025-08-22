@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+celery[redis]
+pandas
+scikit-learn
+statsmodels
+pmdarima
+prophet
+lightgbm
+python-multipart
